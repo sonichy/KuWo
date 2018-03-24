@@ -7,12 +7,8 @@
 
 ![alt](songlist.png)  
 
-![alt](search.png)  
-
-![alt](lyric.png)  
-
 ### 参考
 UI：酷我音乐  
 API：  
-https://www.cnblogs.com/daxiangxm/p/kuwo_music_api.html  ll
+https://www.cnblogs.com/daxiangxm/p/kuwo_music_api.html  
 https://github.com/LiuLang/kwplayer
