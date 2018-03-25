@@ -26,7 +26,9 @@ private:
     NavWidget *navWidget;
     QStackedWidget *stackedWidget;
     QScrollArea *rankScrollArea;
+    QWidget *playlistWidget;
     QTableWidget *tableWidget_playlist;
+    QLabel *label_playlistTitle;
     QTextBrowser *textBrowser;
     ControlBar *controlBar;
     QMediaPlayer *player;
@@ -50,7 +52,7 @@ private:
 private slots:
     void showNormalMaximize();
     void moveMe(QPoint point);
-    void createPlaylist(QString);
+    void createPlaylist(QString,QString);
     void playSong(int,int);
     void durationChange(qint64 d);
     void positionChange(qint64 p);

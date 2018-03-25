@@ -66,6 +66,13 @@ MainWindow::MainWindow(QWidget *parent)
     stackedWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);    
     stackedWidget->addWidget(rankScrollArea);
 
+    playlistWidget = new QWidget;
+    //playlistWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    QVBoxLayout *vboxPL = new QVBoxLayout;
+    vboxPL->setMargin(0);
+    label_playlistTitle = new QLabel;
+    label_playlistTitle->setFont(QFont("Timers",20,50));
+    vboxPL->addWidget(label_playlistTitle);
     tableWidget_playlist = new QTableWidget;
     tableWidget_playlist->setEditTriggers(QAbstractItemView::NoEditTriggers);
     tableWidget_playlist->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -80,7 +87,10 @@ MainWindow::MainWindow(QWidget *parent)
     tableWidget_playlist->verticalHeader()->setStyleSheet("QHeaderView::section { color:white; background-color:#232326; }");
     tableWidget_playlist->setStyleSheet("QTableView { color:white; selection-background-color:#e6e6e6; }");
     connect(tableWidget_playlist,SIGNAL(cellDoubleClicked(int,int)),this,SLOT(playSong(int,int)));
-    stackedWidget->addWidget(tableWidget_playlist);
+    vboxPL->addWidget(tableWidget_playlist);
+    playlistWidget->setLayout(vboxPL);
+    stackedWidget->addWidget(playlistWidget);
+
     hbox->addWidget(stackedWidget);
 
     textBrowser = new QTextBrowser;
@@ -159,7 +169,8 @@ void MainWindow::createToplistWidget()
         ToplistItem *toplistItem = new ToplistItem;
         toplistItem->setImage(rankPicUrl);
         toplistItem->id = list[i].toObject().value("sourceid").toString();
-        connect(toplistItem,SIGNAL(send(QString)),this,SLOT(createPlaylist(QString)));
+        toplistItem->name = list[i].toObject().value("name").toString();
+        connect(toplistItem,SIGNAL(send(QString,QString)),this,SLOT(createPlaylist(QString,QString)));
         gridLayout->addWidget(toplistItem,i/5,i%5);
     }
 }
@@ -205,10 +216,10 @@ void MainWindow::showNormalMaximize()
     }
 }
 
-void MainWindow::createPlaylist(QString id)
-{
-    //stackedWidget->setCurrentWidget(tableWidget_playlist);
+void MainWindow::createPlaylist(QString id, QString name)
+{    
     navWidget->listWidget->setCurrentRow(0);
+    label_playlistTitle->setText(name);
     tableWidget_playlist->setRowCount(0);
     //qDebug() << id;
     QString surl = QString("http://kbangserver.kuwo.cn/ksong.s?from=pc&fmt=json&type=bang&data=content&rn=100&id=%1").arg(id);
@@ -348,7 +359,7 @@ void MainWindow::navPage(int row)
     qDebug() << "nav" << row;
     switch (row) {
     case 0:
-        stackedWidget->setCurrentWidget(tableWidget_playlist);
+        stackedWidget->setCurrentWidget(playlistWidget);
         break;
     case 2:
         stackedWidget->setCurrentWidget(rankScrollArea);
@@ -394,6 +405,7 @@ void MainWindow::preSearch()
 void MainWindow::search()
 {
     if(titleBar->lineEdit_search->text() != ""){
+        label_playlistTitle->setText("搜索：" + titleBar->lineEdit_search->text());
         navWidget->listWidget->setCurrentRow(0);
         int rn = 20;
         QString surl = "http://search.kuwo.cn/r.s?ft=music&itemset=web_2013&client=kt&rformat=json&encoding=utf8&all=" + titleBar->lineEdit_search->text() + "&pn=" + QString::number(titleBar->lineEdit_page->text().toInt()-1) + "&rn=" + QString::number(rn);
@@ -438,7 +450,9 @@ void MainWindow::nextPage()
 
 void MainWindow::getLyric(QString rid)
 {
-    QString surl = "http://player.kuwo.cn/webmusic/st/getNewMuiseByRid?rid=MUSIC_" + rid;
+    QString surl = "http://player.kuwo.cn/webmusic/st/getNewMuiseByRid?rid=";
+    if(!rid.contains("MUSIC_")) surl += "MUSIC_";
+    surl +=rid;
     qDebug() << surl;
     QString xml = getReply(surl);
     //qDebug() << xml.indexOf("<lyric>")+7 << xml.indexOf("</lyric>")-xml.indexOf("<lyric>")-7;
