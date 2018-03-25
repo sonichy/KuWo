@@ -24,6 +24,7 @@
 #include <QSettings>
 #include <QShortcut>
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -62,8 +63,8 @@ MainWindow::MainWindow(QWidget *parent)
     hbox->addWidget(navWidget);
 
     stackedWidget = new QStackedWidget;
-    stackedWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    stackedWidget->addWidget(toplistWidget);
+    stackedWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);    
+    stackedWidget->addWidget(rankScrollArea);
 
     tableWidget_playlist = new QTableWidget;
     tableWidget_playlist->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -141,23 +142,25 @@ void MainWindow::moveMe(QPoint point)
 
 void MainWindow::createToplistWidget()
 {
-    toplistWidget = new QWidget;
+    rankScrollArea = new QScrollArea;
+    QWidget *toplistWidget = new QWidget;
+    rankScrollArea->setWidget(toplistWidget);
+    rankScrollArea->setWidgetResizable(true);   //关键语句
     QString surl = "http://qukudata.kuwo.cn/q.k?op=query&fmt=json&src=mbox&cont=ninfo&rn=50&pn=0&node=2";
     qDebug() << surl;
     QJsonDocument json = QJsonDocument::fromJson(getReply(surl));
     QGridLayout *gridLayout = new QGridLayout(toplistWidget);
+    gridLayout->setSpacing(20);
     QJsonArray list = json.object().value("child").toArray();
     //qDebug() << list;
-    for(int r=0; r< list.size()/5; r++){
-        for(int c=0; c<5; c++){
-            QString rankPicUrl = list[r*5+c].toObject().value("pic").toString();
-            //qDebug() << rankPicUrl;
-            ToplistItem *toplistItem = new ToplistItem;
-            toplistItem->setImage(rankPicUrl);
-            toplistItem->id = list[r*5+c].toObject().value("sourceid").toString();
-            connect(toplistItem,SIGNAL(send(QString)),this,SLOT(createPlaylist(QString)));
-            gridLayout->addWidget(toplistItem,r,c);
-        }
+    for(int i=0; i< list.size(); i++){
+        QString rankPicUrl = list[i].toObject().value("pic").toString();
+        //qDebug() << rankPicUrl;
+        ToplistItem *toplistItem = new ToplistItem;
+        toplistItem->setImage(rankPicUrl);
+        toplistItem->id = list[i].toObject().value("sourceid").toString();
+        connect(toplistItem,SIGNAL(send(QString)),this,SLOT(createPlaylist(QString)));
+        gridLayout->addWidget(toplistItem,i/5,i%5);
     }
 }
 
@@ -207,7 +210,7 @@ void MainWindow::createPlaylist(QString id)
     //stackedWidget->setCurrentWidget(tableWidget_playlist);
     navWidget->listWidget->setCurrentRow(0);
     tableWidget_playlist->setRowCount(0);
-    qDebug() << id;
+    //qDebug() << id;
     QString surl = QString("http://kbangserver.kuwo.cn/ksong.s?from=pc&fmt=json&type=bang&data=content&rn=100&id=%1").arg(id);
     qDebug() << surl;
     QJsonDocument json = QJsonDocument::fromJson(getReply(surl));
@@ -238,7 +241,13 @@ void MainWindow::playSong(int row, int column)
     player->play();
     navWidget->label_songname->setText(tableWidget_playlist->item(row,0)->text() + "\n" + tableWidget_playlist->item(row,1)->text());
     lyricWidget->label_lyric->setText(tableWidget_playlist->item(row,0)->text() + " - " + tableWidget_playlist->item(row,1)->text());
-//    getLyric(id);
+    getLyric(rid);
+    //歌手图片列表，http://artistpicserver.kuwo.cn/pic.web?type=big_artist_pic&pictype=url&content=list&&id=0&from=pc&name=于文文
+    //歌手信息，http://search.kuwo.cn/r.s?stype=artistinfo&artistid=118640
+    //MV，http://mobi.kuwo.cn/mobi.s?f=kuwo&q=VH0YmBjTIqOcgA13rwnO1X7lUHE/58mfHbUI3IEkHufDgtSE0LwjffcBeI2LwQtkxQskru/aVoIUso/mnMHPsU0utlE6RQAvCVXIpBpBZG1E4P9lovYYvxOs8l3FpNHd18NsawlyRySZ3PRcWHjDeL6pWBIIDdvQDKikSAJaHLb03shhRoJW8G5N1nfqQWjJGD2cNW7nHDlKcjfFHvkS2IxoP/XOo3YeQVhu+04UpFuMsvIfgZLb5RT6LrMEzKeH
+    //MVURL，http://ar.player.ri01.sycdn.kuwo.cn/resource/m1/78/40/1301233427.mp4
+    //歌手列表，http://artistlistinfo.kuwo.cn/mb.slist?stype=artistlist&order=hot&rn=50&category=0&pn=0
+
 //    QPixmap pixmap;
 //    pixmap.loadFromData(getReply(tableWidget_playlist->item(row,5)->text()));
 //    navWidget->pushButton_albumPic->setIcon(QIcon(pixmap));
@@ -342,7 +351,7 @@ void MainWindow::navPage(int row)
         stackedWidget->setCurrentWidget(tableWidget_playlist);
         break;
     case 2:
-        stackedWidget->setCurrentWidget(toplistWidget);
+        stackedWidget->setCurrentWidget(rankScrollArea);
         break;
     case 3:
         textBrowser->setStyleSheet("QTextBrowser{color:white; border-image:url(cover.jpg);}");
@@ -427,37 +436,45 @@ void MainWindow::nextPage()
     }
 }
 
-void MainWindow::getLyric(QString id)
+void MainWindow::getLyric(QString rid)
 {
-    QString surl = "http://music.163.com/api/song/lyric?os=pc&lv=-1&kv=-1&tv=-1&id=" + id;
+    QString surl = "http://player.kuwo.cn/webmusic/st/getNewMuiseByRid?rid=MUSIC_" + rid;
     qDebug() << surl;
-    QJsonDocument json = QJsonDocument::fromJson(getReply(surl));
-    QString slyric = json.object().value("lrc").toObject().value("lyric").toString();
-    textBrowser->setText("");
+    QString xml = getReply(surl);
+    //qDebug() << xml.indexOf("<lyric>")+7 << xml.indexOf("</lyric>")-xml.indexOf("<lyric>")-7;
+    QString hash = xml.mid(xml.indexOf("<lyric>")+7,xml.indexOf("</lyric>")-xml.indexOf("<lyric>")-7);
+    qDebug() << "lyric hash" << hash;
+    surl = "http://newlyric.kuwo.cn/newlyric.lrc?" + hash;
+    qDebug() << surl;
+    QString txt = getReply(surl);
+    qDebug() << txt;
 
-    lyrics.clear();
-    QStringList line = slyric.split("\n");
-    for(int i=0; i<line.size(); i++){
-        if(line.at(i).contains("]")){
-            QStringList strlist = line.at(i).split("]");
-            //qDebug() << strlist.at(0).mid(1);
-            Lyric lyric;
-            QString stime = strlist.at(0).mid(1);
-            //qDebug() << stime.length() << stime.indexOf(".");
-            if((stime.length()-stime.indexOf("."))==3) stime += "0";
-            lyric.time = QTime::fromString(stime, "mm:ss.zzz");
-            lyric.sentence = strlist.at(1);
-            lyrics.append(lyric);
-        }
-    }
-    for(int i=0; i<lyrics.size(); i++){
-        textBrowser->insertPlainText(lyrics.at(i).sentence + "\n");
-    }
-    textBrowser->selectAll();
-    textBrowser->setAlignment(Qt::AlignCenter);
-    QTextCursor cursor = textBrowser->textCursor();
-    cursor.setPosition(0, QTextCursor::MoveAnchor);
-    textBrowser->setTextCursor(cursor);
+//    QString slyric = json.object().value("lrc").toObject().value("lyric").toString();
+//    textBrowser->setText("");
+
+//    lyrics.clear();
+//    QStringList line = slyric.split("\n");
+//    for(int i=0; i<line.size(); i++){
+//        if(line.at(i).contains("]")){
+//            QStringList strlist = line.at(i).split("]");
+//            //qDebug() << strlist.at(0).mid(1);
+//            Lyric lyric;
+//            QString stime = strlist.at(0).mid(1);
+//            //qDebug() << stime.length() << stime.indexOf(".");
+//            if((stime.length()-stime.indexOf("."))==3) stime += "0";
+//            lyric.time = QTime::fromString(stime, "mm:ss.zzz");
+//            lyric.sentence = strlist.at(1);
+//            lyrics.append(lyric);
+//        }
+//    }
+//    for(int i=0; i<lyrics.size(); i++){
+//        textBrowser->insertPlainText(lyrics.at(i).sentence + "\n");
+//    }
+//    textBrowser->selectAll();
+//    textBrowser->setAlignment(Qt::AlignCenter);
+//    QTextCursor cursor = textBrowser->textCursor();
+//    cursor.setPosition(0, QTextCursor::MoveAnchor);
+//    textBrowser->setTextCursor(cursor);
 }
 
 void MainWindow::swapLyric()
