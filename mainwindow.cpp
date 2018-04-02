@@ -105,6 +105,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(controlBar->pushButton_next,SIGNAL(pressed()),this,SLOT(playNext()));
     connect(controlBar->pushButton_mute,SIGNAL(pressed()),this,SLOT(mute()));
     connect(controlBar->pushButton_lyric,SIGNAL(clicked(bool)),this,SLOT(showHideLyric(bool)));
+    connect(controlBar->pushButton_download,SIGNAL(pressed()),this,SLOT(dialogDownload()));
     connect(controlBar->pushButton_fullscreen,SIGNAL(pressed()),this,SLOT(enterFullscreen()));
     connect(controlBar->slider_progress,SIGNAL(sliderMoved(int)),this,SLOT(sliderProgressMoved(int)));
     connect(controlBar->slider_volume,SIGNAL(sliderMoved(int)),this,SLOT(sliderVolumeMoved(int)));
@@ -598,7 +599,15 @@ void MainWindow::chooseDownloadPath()
 {
     downloadPath = QFileDialog::getExistingDirectory(this,"保存路径",downloadPath, QFileDialog::ShowDirsOnly |QFileDialog::DontResolveSymlinks);
     if(downloadPath != ""){
-        lineEdit_downloadPath->setText(downloadPath);
+        QObject *object = sender();
+        qDebug() << object->objectName() << downloadPath;
+        if(object->objectName() == "SettingDialogChooseDownloadPath"){
+            lineEdit_downloadPath->setText(downloadPath);
+        }
+        if(object->objectName() == "DownloadDialogPath"){
+            pushButton_path->setText(downloadPath);
+            pushButton_path->setToolTip(downloadPath);
+        }
         writeSettings(QDir::currentPath() + "/config.ini", "config", "DownloadPath", downloadPath);
     }
 }
@@ -666,4 +675,84 @@ void MainWindow::exitFullscreen()
         controlBar->show();
         if(controlBar->pushButton_lyric->isChecked())lyricWidget->show();
     }
+}
+
+void MainWindow::dialogDownload()
+{
+    QDialog *dialog = new QDialog(this);
+    dialog->setFixedWidth(200);
+    dialog->setWindowTitle("下载");
+    dialog->setStyleSheet("QLineEdit { border:1px solid gray; }"
+                          "QToolTip { border:1px solid black; background-color: black; }");
+    QGridLayout *gridLayout = new QGridLayout;
+    QLabel *label = new QLabel("歌名");
+    gridLayout->addWidget(label,0,0,1,1);
+    QLineEdit *lineEdit_songname = new QLineEdit;
+    lineEdit_songname->setText(navWidget->label_songname->text().replace("\n"," - "));
+    gridLayout->addWidget(lineEdit_songname,0,1,1,1);
+    label = new QLabel("下载地址");
+    gridLayout->addWidget(label,1,0,1,1);
+    QLineEdit *lineEdit_url = new QLineEdit;
+    lineEdit_url->setText(player->media().canonicalUrl().toString());
+    gridLayout->addWidget(lineEdit_url,1,1,1,1);
+    label = new QLabel("保存路径");
+    gridLayout->addWidget(label,2,0,1,1);
+    pushButton_path = new QPushButton;
+    pushButton_path->setObjectName("DownloadDialogPath");
+    pushButton_path->setFocusPolicy(Qt::NoFocus);
+    downloadPath = readSettings(QDir::currentPath() + "/config.ini", "config", "DownloadPath");
+    if(downloadPath=="") downloadPath = QStandardPaths::standardLocations(QStandardPaths::MusicLocation).first();
+    pushButton_path->setText(downloadPath);
+    pushButton_path->setToolTip(downloadPath);
+    connect(pushButton_path,SIGNAL(pressed()),this,SLOT(chooseDownloadPath()));
+    gridLayout->addWidget(pushButton_path,2,1,1,1);
+    dialog->setLayout(gridLayout);
+    QHBoxLayout *hbox = new QHBoxLayout;
+    hbox->addStretch();
+    QPushButton *pushButton_confirm = new QPushButton("确定");
+    connect(pushButton_confirm, SIGNAL(clicked()), dialog, SLOT(accept()));
+    hbox->addWidget(pushButton_confirm);
+    QPushButton *pushButton_cancel = new QPushButton("取消");
+    connect(pushButton_cancel, SIGNAL(clicked()), dialog, SLOT(reject()));
+    hbox->addWidget(pushButton_cancel);
+    hbox->addStretch();
+    gridLayout->addLayout(hbox,3,0,1,2);
+    int result = dialog->exec();
+    if (result == QDialog::Accepted) {
+        download(lineEdit_url->text(), pushButton_path->text() + "/" + lineEdit_songname->text() + "." + QFileInfo(lineEdit_url->text()).suffix());
+    }else
+    if (result == QDialog::Rejected) {
+        dialog->close();
+    }
+}
+
+void MainWindow::download(QString surl, QString filepath)
+{
+    controlBar->pushButton_download->setEnabled(false);
+    qDebug() <<  "download -> " << surl << "->" << filepath;
+    QUrl url = QString(surl);
+    QNetworkAccessManager *NAM = new QNetworkAccessManager;
+    QNetworkRequest request(url);
+    QNetworkReply *reply = NAM->get(request);
+    QEventLoop loop;
+    connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+    loop.exec();
+    QFile file(filepath);
+    file.open(QIODevice::WriteOnly);
+    file.write(reply->readAll());
+    file.close();
+    //ui->pushButton_download->setText("↓");
+    controlBar->pushButton_download->setEnabled(true);
+}
+
+void MainWindow::updateProgress(qint64 bytesReceived, qint64 bytesTotal)
+{
+    //ui->pushButton_download->setText(QString("%1%").arg(bytesReceived*100/bytesTotal));
+    float p = (float)bytesReceived/bytesTotal;
+    controlBar->pushButton_download->setStyleSheet(QString("QPushButton { background-color: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0,"
+                                                   "stop:0 rgba(48, 194, 124, 255), stop:%1 rgba(48, 194, 124, 255),"
+                                                   "stop:%2 rgba(255, 255, 255, 255), stop:1 rgba(255, 255, 255, 255)); }")
+                                      .arg(p-0.001)
+                                      .arg(p));
+    qDebug() << p << controlBar->pushButton_download->styleSheet();
 }
