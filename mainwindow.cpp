@@ -43,7 +43,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     titleBar = new TitleBar;
     connect(titleBar->action_search,SIGNAL(triggered(bool)),this,SLOT(preSearch()));
-    //connect(titleBar->pushButton_search,SIGNAL(clicked(bool)),this,SLOT(preSearch()));
     connect(titleBar->lineEdit_search,SIGNAL(returnPressed()),this,SLOT(preSearch()));
     connect(titleBar->lineEdit_page,SIGNAL(returnPressed()),this,SLOT(search()));
     connect(titleBar->pushButton_lastPage,SIGNAL(clicked(bool)),this,SLOT(lastPage()));
