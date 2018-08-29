@@ -63,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     hbox->addWidget(navWidget);
 
     stackedWidget = new QStackedWidget;
-    stackedWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);    
+    stackedWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     stackedWidget->addWidget(rankScrollArea);
 
     playlistWidget = new QWidget;
@@ -85,7 +85,7 @@ MainWindow::MainWindow(QWidget *parent)
     tableWidget_playlist->setHorizontalHeaderLabels(header);
     tableWidget_playlist->horizontalHeader()->setStyleSheet("QHeaderView::section { color:white; background-color:#232326; }");
     tableWidget_playlist->verticalHeader()->setStyleSheet("QHeaderView::section { color:white; background-color:#232326; }");
-    tableWidget_playlist->setStyleSheet("QTableView { color:white; selection-background-color:#e6e6e6; }");
+    tableWidget_playlist->setStyleSheet("QTableView { color:white; selection-background-color:#232326; }");
     connect(tableWidget_playlist,SIGNAL(cellDoubleClicked(int,int)),this,SLOT(playSong(int,int)));
     vboxPL->addWidget(tableWidget_playlist);
     playlistWidget->setLayout(vboxPL);
@@ -109,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(controlBar->pushButton_fullscreen,SIGNAL(pressed()),this,SLOT(enterFullscreen()));
     connect(controlBar->slider_progress,SIGNAL(sliderMoved(int)),this,SLOT(sliderProgressMoved(int)));
     connect(controlBar->slider_volume,SIGNAL(sliderMoved(int)),this,SLOT(sliderVolumeMoved(int)));
-    vbox->addWidget(controlBar);    
+    vbox->addWidget(controlBar);
     widget->setLayout(vbox);
 
     player = new QMediaPlayer;
@@ -186,7 +186,7 @@ QByteArray MainWindow::getReply(QString surl)
     connect(reply,&QNetworkReply::finished,&loop,&QEventLoop::quit);
     loop.exec();
     reply->deleteLater();
-    return reply->readAll();           
+    return reply->readAll();
 }
 
 QByteArray MainWindow::postReply(QString surl,QString spost)
@@ -218,7 +218,7 @@ void MainWindow::showNormalMaximize()
 }
 
 void MainWindow::createPlaylist(QString id, QString name)
-{    
+{
     navWidget->listWidget->setCurrentRow(0);
     label_playlistTitle->setText(name);
     tableWidget_playlist->setRowCount(0);
@@ -275,7 +275,7 @@ void MainWindow::durationChange(qint64 d)
 }
 
 void MainWindow::positionChange(qint64 p)
-{    
+{
     //qDebug() << "position =" << p;
     if(!controlBar->slider_progress->isSliderDown())controlBar->slider_progress->setValue(p);
     QTime t(0,0,0);
@@ -659,7 +659,7 @@ void MainWindow::enterFullscreen()
 {
     if(navWidget->listWidget->currentRow()==3){
         showFullScreen();
-        titleBar->hide();        
+        titleBar->hide();
         navWidget->hide();
         controlBar->hide();
         lyricWidget->hide();
@@ -670,7 +670,7 @@ void MainWindow::exitFullscreen()
 {
     if(isFullScreen()){
         showNormal();
-        titleBar->show();       
+        titleBar->show();
         navWidget->show();
         controlBar->show();
         if(controlBar->pushButton_lyric->isChecked())lyricWidget->show();
